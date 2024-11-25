@@ -1,0 +1,47 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential libncurses-dev bison flex libssl-dev libelf-dev
+
+      - name: Clone Kernel Source
+        run: |
+          git clone --depth=1 https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git -b thyme
+
+      - name: Set up Toolchain
+        run: |
+          git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 toolchain
+          export ARCH=arm64
+          export CROSS_COMPILE=${PWD}/toolchain/bin/aarch64-linux-android-
+
+      - name: Configure Kernel
+        run: |
+          cd Xiaomi_Kernel_OpenSource
+          make O=out thyme_defconfig
+
+      - name: Patch with KernelSU (optional)
+        run: |
+          git clone https://github.com/kurumiT3/KernelSU.git # 替换为实际的KernelSU地址
+          cd KernelSU
+          # 添加相应的补丁命令
+
+      - name: Build Kernel
+        run: |
+          make O=out -j$(nproc)
+
+      - name: Upload Kernel Image
+        uses: actions/upload-artifact@v2
+        with:
+          name: kernel-image
+          path: out/arch/arm64/boot/Image.gz-dtb # 根据实际生成路径修改
